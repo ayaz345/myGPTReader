@@ -44,8 +44,7 @@ file_storage_context = StorageContext.from_defaults()
 
 def get_unique_md5(urls):
     urls_str = ''.join(sorted(urls))
-    hashed_str = hashlib.md5(urls_str.encode('utf-8')).hexdigest()
-    return hashed_str
+    return hashlib.md5(urls_str.encode('utf-8')).hexdigest()
 
 def format_dialog_messages(messages):
     return "\n".join(messages)
@@ -54,9 +53,7 @@ def get_document_from_youtube_id(video_id):
     if video_id is None:
         return None
     transcript = get_youtube_transcript(video_id)
-    if transcript is None:
-        return None
-    return Document(transcript)
+    return None if transcript is None else Document(transcript)
 
 def remove_prompt_from_text(text):
     return text.replace('chatGPT:', '').strip()
@@ -68,7 +65,7 @@ def get_documents_from_urls(urls):
         documents.append(document)
     if len(urls['rss_urls']) > 0:
         rss_documents = RssReader().load_data(urls['rss_urls'])
-        documents = documents + rss_documents
+        documents += rss_documents
     if len(urls['phantomjscloud_urls']) > 0:
         for url in urls['phantomjscloud_urls']:
             document = Document(scrape_website_by_phantomjscloud(url))
@@ -101,8 +98,7 @@ def get_index_from_file_cache(name):
 
 def get_index_name_from_file(file: str):
     file_md5_with_extension = str(Path(file).relative_to(index_cache_file_dir).name)
-    file_md5 = file_md5_with_extension.split('.')[0]
-    return file_md5
+    return file_md5_with_extension.split('.')[0]
 
 def get_answer_from_chatGPT(messages):
     dialog_messages = format_dialog_messages(messages)
@@ -124,7 +120,7 @@ def get_answer_from_llama_web(messages, urls):
     index_file_name = get_unique_md5(urls)
     index = get_index_from_web_cache(index_file_name)
     if index is None:
-        logging.info(f"=====> Build index from web!")
+        logging.info("=====> Build index from web!")
         documents = get_documents_from_urls(combained_urls)
         logging.info(documents)
         index = GPTVectorStoreIndex.from_documents(documents, service_context=service_context)
@@ -149,7 +145,7 @@ def get_answer_from_llama_file(messages, file):
     index_name = get_index_name_from_file(file)
     index = get_index_from_file_cache(index_name)
     if index is None:
-        logging.info(f"=====> Build index from file!")
+        logging.info("=====> Build index from file!")
         documents = SimpleDirectoryReader(input_files=[file]).load_data()
         index = GPTVectorStoreIndex.from_documents(documents, service_context=service_context)
         index.set_index_id(index_name)
@@ -208,13 +204,12 @@ def get_voice_file_from_text(text, voice_name=None):
     ssml = convert_to_ssml(text, voice_name)
     result = synthesizer.speak_ssml_async(ssml).get()
     if result.reason == ResultReason.SynthesizingAudioCompleted:
-        logging.info("Speech synthesized for text [{}], and the audio was saved to [{}]".format(
-            text, file_name))
+        logging.info(
+            f"Speech synthesized for text [{text}], and the audio was saved to [{file_name}]"
+        )
     elif result.reason == ResultReason.Canceled:
         cancellation_details = result.cancellation_details
-        logging.info("Speech synthesis canceled: {}".format(
-            cancellation_details.reason))
+        logging.info(f"Speech synthesis canceled: {cancellation_details.reason}")
         if cancellation_details.reason == CancellationReason.Error:
-            logging.error("Error details: {}".format(
-                cancellation_details.error_details))
+            logging.error(f"Error details: {cancellation_details.error_details}")
     return file_name

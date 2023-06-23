@@ -22,10 +22,10 @@ def cut_string(text):
     for word in words:
         if len(new_text + word) > MAX_DESCRIPTION_LENGTH:
             break
-        new_text += word + " "
+        new_text += f"{word} "
         count += 1
 
-    return new_text.strip() + '...'
+    return f'{new_text.strip()}...'
 
 def get_summary_from_gpt_thread(url):
     news_summary_prompt = '请用中文简短概括这篇文章的内容。'
@@ -45,7 +45,7 @@ def get_description(entry):
     except Exception as e:
         logging.error(e)
     if gpt_answer is not None:
-        summary = 'AI: ' + gpt_answer
+        summary = f'AI: {gpt_answer}'
     else:
         summary = cut_string(get_text_from_html(entry.summary))
     return summary
@@ -60,20 +60,18 @@ def get_text_from_html(html):
 def get_post_urls_with_title(rss_url):
     feed = feedparser.parse(rss_url)
     updated_posts = []
-    
+
     for entry in feed.entries:
         published_time = entry.published_parsed if 'published_parsed' in entry else None
         # published_date = date(published_time.tm_year,
         #                       published_time.tm_mon, published_time.tm_mday)
-        updated_post = {}
-        updated_post['title'] = entry.title
-        updated_post['summary'] = get_description(entry)
+        updated_post = {'title': entry.title, 'summary': get_description(entry)}
         updated_post['url'] = entry.link
         updated_post['publish_date'] = published_time
         updated_posts.append(updated_post)
         if len(updated_posts) >= MAX_POSTS:
             break
-        
+
     return updated_posts
 
 def build_slack_blocks(title, news):
@@ -112,9 +110,7 @@ def build_slack_blocks(title, news):
 def build_hot_news_blocks(news_key):
     rss = rss_urls[news_key]['rss']['hot']
     hot_news = get_post_urls_with_title(rss['url'])
-    hot_news_blocks = build_slack_blocks(
-        rss['name'], hot_news)
-    return hot_news_blocks
+    return build_slack_blocks(rss['name'], hot_news)
 
 def build_zhihu_hot_news_blocks():
     return build_hot_news_blocks('zhihu')

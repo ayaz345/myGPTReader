@@ -45,8 +45,7 @@ def get_urls(urls):
 
 def format_text(text):
     text_without_html_tag = html2text.html2text(text)
-    fix_chinese_split_chunk_size_error = text_without_html_tag.replace('，', '， ')
-    return fix_chinese_split_chunk_size_error
+    return text_without_html_tag.replace('，', '， ')
 
 def scrape_website(url: str) -> str:
     endpoint_url = f"https://web-scraper.i365.tech/?url={url}&selector=div"
@@ -55,16 +54,14 @@ def scrape_website(url: str) -> str:
         'CF-Access-Client-Secret': CF_ACCESS_CLIENT_SECRET,
     }
     response = requests.get(endpoint_url, headers=headers)
-    if response.status_code == 200:
-        try:
-            json_response = response.json()
-            tag_array = json_response['result']['div']
-            text = ''.join(tag_array)
-            return format_text(text)
-        except:
-            return "Error: Unable to parse JSON response"
-    else:
+    if response.status_code != 200:
         return f"Error: {response.status_code} - {response.reason}"
+    try:
+        json_response = response.json()
+        tag_array = json_response['result']['div']
+        return format_text(''.join(tag_array))
+    except:
+        return "Error: Unable to parse JSON response"
     
 def scrape_website_by_phantomjscloud(url: str) -> str:
     endpoint_url = f"https://PhantomJsCloud.com/api/browser/v2/{PHANTOMJSCLOUD_API_KEY}/"
@@ -80,19 +77,20 @@ def scrape_website_by_phantomjscloud(url: str) -> str:
         }
     }
     response = requests.post(endpoint_url, data=json.dumps(data))
-    if response.status_code == 200:
-        try:
-            return response.content.decode('utf-8')
-        except:
-            return "Error: Unable to fetch content"
-    else:
+    if response.status_code != 200:
         return f"Error: {response.status_code} - {response.reason}"
+    try:
+        return response.content.decode('utf-8')
+    except:
+        return "Error: Unable to fetch content"
     
 def get_youtube_transcript(video_id: str) -> str:
     try:
         transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
-        transcript = next((transcript.fetch() for transcript in transcripts if transcript), None)
-        if transcript:
+        if transcript := next(
+            (transcript.fetch() for transcript in transcripts if transcript),
+            None,
+        ):
             return "\n".join(chunk["text"] for chunk in transcript)
     except Exception as e:
         logging.warning(f"Error: {e} - {video_id}")

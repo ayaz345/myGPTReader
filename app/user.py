@@ -30,13 +30,10 @@ def update_message_token_usage(user_id, message_id, message_type, llm_token_usag
     }
     json_data = json.dumps(data)
     response = requests.post(endpoint_url, headers=headers, data=json_data)
-    if response.status_code == 200:
-        json_response = response.json()
-        if 'error' in json_response:
-            return False
-        return True
-    else:
+    if response.status_code != 200:
         return False
+    json_response = response.json()
+    return 'error' not in json_response
     
 def get_user(user_id):
     endpoint_url = f"https://api.myreader.io/api/user/slack/{user_id}"
@@ -45,16 +42,13 @@ def get_user(user_id):
         'CF-Access-Client-Secret': CF_ACCESS_CLIENT_SECRET,
     }
     response = requests.get(endpoint_url, headers=headers)
-    if response.status_code == 200:
-        try:
-            json_response = response.json()
-            if 'error' in json_response:
-                return None
-            return json_response
-        except:
-            return "Error: Unable to parse JSON response"
-    else:
+    if response.status_code != 200:
         return f"Error: {response.status_code} - {response.reason}"
+    try:
+        json_response = response.json()
+        return None if 'error' in json_response else json_response
+    except:
+        return "Error: Unable to parse JSON response"
         
 def is_premium_user(user_id):
     try:

@@ -132,7 +132,7 @@ def remove_url_from_text(text, urls):
     # only remove youtube url
     for url in urls:
         if 'youtube.com' in url or 'youtu.be' in url:
-            text = text.replace('<' + url + '>', '')
+            text = text.replace(f'<{url}>', '')
     return text
 
 def format_dialog_text(text, voicemessage=None):
@@ -183,11 +183,14 @@ def bot_process(event, say, logger):
         temp_file_path.mkdir(parents=True, exist_ok=True)
         temp_file_filename = temp_file_path / file["name"]
         with open(temp_file_filename, "wb") as f:
-            response = requests.get(url_private, headers={"Authorization": "Bearer " + slack_app.client.token})
+            response = requests.get(
+                url_private,
+                headers={"Authorization": f"Bearer {slack_app.client.token}"},
+            )
             f.write(response.content)
             logger.info(f'=====> Downloaded file to save {temp_file_filename}')
             temp_file_md5 = md5(temp_file_filename)
-            file_md5_name = index_cache_file_dir / (temp_file_md5 + '.' + filetype)
+            file_md5_name = index_cache_file_dir / f'{temp_file_md5}.{filetype}'
             if not file_md5_name.exists():
                 logger.info(f'=====> Rename file to {file_md5_name}')
                 temp_file_filename.rename(file_md5_name)
@@ -213,7 +216,7 @@ def bot_process(event, say, logger):
     if file_md5_name is not None:
         if not voicemessage:
             update_thread_history(parent_thread_ts, None, None, file_md5_name)
-    
+
     urls = thread_message_history[parent_thread_ts]['context_urls']
     file = thread_message_history[parent_thread_ts]['file']
 
@@ -232,7 +235,9 @@ def bot_process(event, say, logger):
     try:
         gpt_response, total_llm_model_tokens, total_embedding_model_tokens = future.result(timeout=300)
         update_token_usage(event, total_llm_model_tokens, total_embedding_model_tokens)
-        update_thread_history(parent_thread_ts, 'chatGPT: %s' % insert_space(f'{gpt_response}'))
+        update_thread_history(
+            parent_thread_ts, f"chatGPT: {insert_space(f'{gpt_response}')}"
+        )
         logger.info(gpt_response)
         if voicemessage is None:
             say(f'<@{user}>, {gpt_response}', thread_ts=thread_ts)
@@ -275,7 +280,10 @@ def log_message(logger, event, say):
         if is_premium_user(event["user"]):
             bot_process(event, say, logger)
         else:
-            say(f'This feature is exclusive to Premium users. To chat with the bot directly, please subscribe to our Premium plan to support our service. You can find the payment link by clicking on the bot and selecting the Home tab.', thread_ts=event["ts"])
+            say(
+                'This feature is exclusive to Premium users. To chat with the bot directly, please subscribe to our Premium plan to support our service. You can find the payment link by clicking on the bot and selecting the Home tab.',
+                thread_ts=event["ts"],
+            )
     except Exception as e:
         logger.error(f"Error responding to direct message: {e}")
 
